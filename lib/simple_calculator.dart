@@ -15,6 +15,7 @@ class _SimpleCalculatorState extends State<SimpleCalculator> {
   double equationFontSize = 38.0;
   double resultFontSize = 48.0;
 
+  _SimpleCalculatorState();
   buttonPressed(String buttonText) {
     setState(() {
       if (buttonText == 'C') {
@@ -28,16 +29,18 @@ class _SimpleCalculatorState extends State<SimpleCalculator> {
       } else if (buttonText == '=') {
         expression = equation;
         expression = expression.replaceAll('×', '*');
-        expression = expression.replaceAll('÷','/');
+        expression = expression.replaceAll('÷', '/');
+
         try {
-          Parser p= new Parser();
+          Parser p = new Parser();
           Expression exp = p.parse(expression);
           ContextModel cm = ContextModel();
-          result = '${exp.evaluate(EvaluationType.REAL,cm)}';
+          result = '${exp.evaluate(EvaluationType.REAL, cm)}';
         } catch (e) {
           result = 'Error';
         }
-      } else {
+      }
+        else {
         if (equation == '0') {
           equation = buttonText;
         } else {
