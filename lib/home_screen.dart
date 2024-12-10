@@ -1,129 +1,166 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
-class MapApp extends StatefulWidget {
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
+
   @override
-  _MapAppState createState() => _MapAppState();
+  State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _MapAppState extends State<MapApp> {
+class _HomeScreenState extends State<HomeScreen> {
+  Position? position;
   GoogleMapController? _mapController;
-  Position? _currentPosition;
-  Marker? _currentMarker;
-  final List<LatLng> _polylineCoordinates = [];
+  List<LatLng> _routeCoordinates = [];
+  Set<Marker> _markers = {};
   Set<Polyline> _polylines = {};
-  Timer? _locationUpdateTimer;
 
   @override
   void initState() {
     super.initState();
-    _initializeLocationUpdates();
+    listenCurrentLocation();
   }
 
-  @override
-  void dispose() {
-    _locationUpdateTimer?.cancel();
-    super.dispose();
-  }
+  Future<void> listenCurrentLocation() async {
+    final isGranted = await isLocationPermissionGranted();
+    if (isGranted) {
+      final isServiceEnabled = await checkGPSServiceEnable();
+      if (isServiceEnabled) {
+        Geolocator.getPositionStream(
+          locationSettings: const LocationSettings(
+              distanceFilter: 10, accuracy: LocationAccuracy.bestForNavigation),
+        ).listen((pos) {
+          setState(() {
+            position = pos;
+            LatLng currentLatLng = LatLng(pos.latitude, pos.longitude);
 
-  Future<void> _initializeLocationUpdates() async {
-    final permissionGranted = await _requestLocationPermission();
-    if (permissionGranted) {
-      _updateCurrentLocation(); // Get the initial location.
-      _locationUpdateTimer = Timer.periodic(const Duration(seconds: 10), () {
-        _updateCurrentLocation(); // Update every 10 seconds.
-      } as void Function(Timer timer));
+            // Update route coordinates for polyline
+            _routeCoordinates.add(currentLatLng);
+
+            // Add Marker
+            _markers = {
+              Marker(
+                markerId: const MarkerId('current_location'),
+                position: currentLatLng,
+                infoWindow: InfoWindow(
+                  title: 'Current Location',
+                  snippet:
+                  'Lat: ${currentLatLng.latitude}, Lng: ${currentLatLng.longitude}',
+                ),
+              ),
+            };
+
+            // Update Polyline
+            _polylines = {
+              Polyline(
+                polylineId: const PolylineId('route'),
+                points: _routeCoordinates,
+                color: Colors.blue,
+                width: 5,
+              ),
+            };
+
+            // Move Camera to Current Location
+            _mapController?.animateCamera(
+              CameraUpdate.newLatLng(currentLatLng),
+            );
+          });
+        });
+      } else {
+        Geolocator.openLocationSettings();
+      }
+    } else {
+      final result = await requestLocationPermission();
+      if (result) {
+        getCurrentLocation();
+      } else {
+        Geolocator.openAppSettings();
+      }
     }
   }
 
-  Future<bool> _requestLocationPermission() async {
+  Future<void> getCurrentLocation() async {
+    final isGranted = await isLocationPermissionGranted();
+    if (isGranted) {
+      final isServiceEnabled = await checkGPSServiceEnable();
+      if (isServiceEnabled) {
+        Position p = await Geolocator.getCurrentPosition();
+        setState(() {
+          position = p;
+        });
+      } else {
+        Geolocator.openLocationSettings();
+      }
+    } else {
+      final result = await requestLocationPermission();
+      if (result) {
+        getCurrentLocation();
+      } else {
+        Geolocator.openAppSettings();
+      }
+    }
+  }
+
+  Future<bool> isLocationPermissionGranted() async {
     LocationPermission permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied ||
-        permission == LocationPermission.deniedForever) {
-      permission = await Geolocator.requestPermission();
-    }
-    return permission == LocationPermission.always ||
-        permission == LocationPermission.whileInUse;
-  }
-
-  Future<void> _updateCurrentLocation() async {
-    try {
-      Position position = await Geolocator.getCurrentPosition();
-      setState(() {
-        _currentPosition = position;
-        _updateMarker(position);
-        _updatePolyline(position);
-        _animateMapToPosition(position);
-      });
-    } catch (e) {
-      print("Error getting location: $e");
+    if (permission == LocationPermission.always ||
+        permission == LocationPermission.whileInUse) {
+      return true;
+    } else {
+      return false;
     }
   }
 
-  void _updateMarker(Position position) {
-    final LatLng currentLatLng = LatLng(position.latitude, position.longitude);
-    _currentMarker = Marker(
-      markerId: const MarkerId("current_location"),
-      position: currentLatLng,
-      infoWindow: InfoWindow(
-        title: "My current location",
-        snippet:
-        "Lat: ${position.latitude.toStringAsFixed(4)}, Lng: ${position.longitude.toStringAsFixed(4)}",
-      ),
-    );
-  }
-
-  void _updatePolyline(Position position) {
-    final LatLng currentLatLng = LatLng(position.latitude, position.longitude);
-    _polylineCoordinates.add(currentLatLng);
-    _polylines = {
-      Polyline(
-        polylineId: const PolylineId("tracking_route"),
-        points: _polylineCoordinates,
-        color: Colors.blue,
-        width: 4,
-      ),
-    };
-  }
-
-  void _animateMapToPosition(Position position) {
-    if (_mapController != null) {
-      _mapController!.animateCamera(
-        CameraUpdate.newLatLng(
-          LatLng(position.latitude, position.longitude),
-        ),
-      );
+  Future<bool> requestLocationPermission() async {
+    LocationPermission permission = await Geolocator.requestPermission();
+    if (permission == LocationPermission.always ||
+        permission == LocationPermission.whileInUse) {
+      return true;
+    } else {
+      return false;
     }
+  }
+
+  Future<bool> checkGPSServiceEnable() async {
+    return await Geolocator.isLocationServiceEnabled();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Map Tracking App"),
-        backgroundColor: Colors.blue,
+        title: const Text('Home'),
       ),
-      body: _currentPosition == null
-          ? const Center(child: CircularProgressIndicator())
-          : GoogleMap(
-        onMapCreated: (GoogleMapController controller) {
-          _mapController = controller;
-        },
-        initialCameraPosition: CameraPosition(
-          target: LatLng(
-            _currentPosition!.latitude,
-            _currentPosition!.longitude,
+      body: Stack(
+        children: [
+          GoogleMap(
+            initialCameraPosition: CameraPosition(
+              target: position != null
+                  ? LatLng(position!.latitude, position!.longitude)
+                  : LatLng(0, 0),
+              zoom: 16.0,
+            ),
+            myLocationEnabled: true,
+            myLocationButtonEnabled: true,
+            onMapCreated: (controller) {
+              _mapController = controller;
+            },
+            markers: _markers,
+            polylines: _polylines,
           ),
-          zoom: 16,
-        ),
-        markers: _currentMarker != null ? {_currentMarker!} : {},
-        polylines: _polylines,
-        myLocationEnabled: true,
-        myLocationButtonEnabled: true,
+          Positioned(
+            bottom: 20,
+            left: 20,
+            child: ElevatedButton(
+              onPressed: () {
+                getCurrentLocation();
+              },
+              child: const Text('Get current location'),
+            ),
+          ),
+        ],
       ),
     );
   }
 }
-

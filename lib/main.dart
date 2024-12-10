@@ -12,7 +12,7 @@ class GoogleMapGeolocator extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Calculator',
-      home:MapApp(),
+      home:HomeScreen(),
       theme: ThemeData(primarySwatch: Colors.blue),
     );
   }
