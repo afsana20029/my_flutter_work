@@ -127,9 +127,3 @@ class _MapAppState extends State<MapApp> {
   }
 }
 
-void main() {
-  runApp(MaterialApp(
-    home: MapApp(),
-    debugShowCheckedModeBanner: false,
-  ));
-}
