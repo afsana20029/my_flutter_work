@@ -38,7 +38,7 @@ class _HomeScreenState extends State<HomeScreen> {
             position = pos;
             _updateMap();
           });
-        });
+        });//
       } else {
         Geolocator.openLocationSettings();
       }
