@@ -3,10 +3,10 @@ import 'package:my_flutter_work/home_screen.dart';
 
 
 void main(){
-  runApp(Calculator());
+  runApp(const GoogleMapGeolocator());
 }
-class Calculator extends StatelessWidget {
-  const Calculator({super.key});
+class GoogleMapGeolocator extends StatelessWidget {
+  const GoogleMapGeolocator({super.key});
 
   @override
   Widget build(BuildContext context) {
