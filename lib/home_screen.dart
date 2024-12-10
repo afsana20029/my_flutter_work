@@ -12,7 +12,7 @@ class _MapAppState extends State<MapApp> {
   GoogleMapController? _mapController;
   Position? _currentPosition;
   Marker? _currentMarker;
-  List<LatLng> _polylineCoordinates = [];
+  final List<LatLng> _polylineCoordinates = [];
   Set<Polyline> _polylines = {};
   Timer? _locationUpdateTimer;
 
