@@ -35,10 +35,8 @@ class _HomeScreenState extends State<HomeScreen> {
             position = pos;
             LatLng currentLatLng = LatLng(pos.latitude, pos.longitude);
 
-            // Update route coordinates for polyline
             _routeCoordinates.add(currentLatLng);
 
-            // Add Marker
             _markers = {
               Marker(
                 markerId: const MarkerId('current_location'),
@@ -46,12 +44,11 @@ class _HomeScreenState extends State<HomeScreen> {
                 infoWindow: InfoWindow(
                   title: 'Current Location',
                   snippet:
-                  'Lat: ${currentLatLng.latitude}, Lng: ${currentLatLng.longitude}',
+                      'Lat: ${currentLatLng.latitude}, Lng: ${currentLatLng.longitude}',
                 ),
               ),
             };
 
-            // Update Polyline
             _polylines = {
               Polyline(
                 polylineId: const PolylineId('route'),
@@ -61,7 +58,6 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             };
 
-            // Move Camera to Current Location
             _mapController?.animateCamera(
               CameraUpdate.newLatLng(currentLatLng),
             );
