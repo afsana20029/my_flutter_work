@@ -1,6 +1,6 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:my_flutter_work/simple_calculator.dart';
+import 'package:my_flutter_work/home_screen.dart';
+
 
 void main(){
   runApp(Calculator());
@@ -12,7 +12,7 @@ class Calculator extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Calculator',
-      home:SimpleCalculator(),
+      home:HomeScreen(),
       theme: ThemeData(primarySwatch: Colors.blue),
     );
   }
