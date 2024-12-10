@@ -1,144 +1,135 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
-
+class MapApp extends StatefulWidget {
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  _MapAppState createState() => _MapAppState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
-  Position? position;
-  GoogleMapController? mapController;
-  Set<Marker> _markers = {};
+class _MapAppState extends State<MapApp> {
+  GoogleMapController? _mapController;
+  Position? _currentPosition;
+  Marker? _currentMarker;
+  List<LatLng> _polylineCoordinates = [];
   Set<Polyline> _polylines = {};
-  final LatLng? _destination = const LatLng(
-      23.756188979961518, 90.38667634904655); // Example destination (Kolkata)
+  Timer? _locationUpdateTimer;
 
   @override
   void initState() {
     super.initState();
-    listenCurrentLocation();
+    _initializeLocationUpdates();
   }
 
-  Future<void> listenCurrentLocation() async {
-    final isGranted = await isLocationPermissionGranted();
-    if (isGranted) {
-      final isServiceEnabled = await checkGPSServiceEnable();
-      if (isServiceEnabled) {
-        Geolocator.getPositionStream(
-          locationSettings: const LocationSettings(
-            distanceFilter: 10,
-            accuracy: LocationAccuracy.bestForNavigation,
-          ),
-        ).listen((pos) {
-          setState(() {
-            position = pos;
-            _updateMap();
-          });
-        });//
-      } else {
-        Geolocator.openLocationSettings();
-      }
-    } else {
-      final result = await requestLocationPermission();
-      if (result) {
-        getCurrentLocation();
-      } else {
-        Geolocator.openAppSettings();
-      }
+  @override
+  void dispose() {
+    _locationUpdateTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _initializeLocationUpdates() async {
+    final permissionGranted = await _requestLocationPermission();
+    if (permissionGranted) {
+      _updateCurrentLocation(); // Get the initial location.
+      _locationUpdateTimer = Timer.periodic(const Duration(seconds: 10), () {
+        _updateCurrentLocation(); // Update every 10 seconds.
+      } as void Function(Timer timer));
     }
   }
 
-  Future<void> getCurrentLocation() async {
-    final isGranted = await isLocationPermissionGranted();
-    if (isGranted) {
-      final isServiceEnabled = await checkGPSServiceEnable();
-      if (isServiceEnabled) {
-        Position p = await Geolocator.getCurrentPosition();
-        setState(() {
-          position = p;
-          _updateMap();
-        });
-      } else {
-        Geolocator.openLocationSettings();
-      }
-    } else {
-      final result = await requestLocationPermission();
-      if (result) {
-        getCurrentLocation();
-      } else {
-        Geolocator.openAppSettings();
-      }
-    }
-  }
-
-  void _updateMap() {
-    if (position != null) {
-      _markers = {
-        Marker(
-          markerId: const MarkerId('current_location'),
-          position: LatLng(position!.latitude, position!.longitude),
-          infoWindow: const InfoWindow(title: 'Current Location'),
-        ),
-        Marker(
-          markerId: const MarkerId('destination'),
-          position: _destination!,
-          infoWindow: const InfoWindow(title: 'Destination'),
-        ),
-      };
-
-      _polylines = {
-        Polyline(
-          polylineId: const PolylineId('route'),
-          points: [
-            LatLng(position!.latitude, position!.longitude),
-            _destination!,
-          ],
-          color: Colors.blue,
-          width: 5,
-        ),
-      };
-    }
-  }
-
-  Future<bool> isLocationPermissionGranted() async {
+  Future<bool> _requestLocationPermission() async {
     LocationPermission permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever) {
+      permission = await Geolocator.requestPermission();
+    }
     return permission == LocationPermission.always ||
         permission == LocationPermission.whileInUse;
   }
 
-  Future<bool> requestLocationPermission() async {
-    LocationPermission permission = await Geolocator.requestPermission();
-    return permission == LocationPermission.always ||
-        permission == LocationPermission.whileInUse;
+  Future<void> _updateCurrentLocation() async {
+    try {
+      Position position = await Geolocator.getCurrentPosition();
+      setState(() {
+        _currentPosition = position;
+        _updateMarker(position);
+        _updatePolyline(position);
+        _animateMapToPosition(position);
+      });
+    } catch (e) {
+      print("Error getting location: $e");
+    }
   }
 
-  Future<bool> checkGPSServiceEnable() async {
-    return await Geolocator.isLocationServiceEnabled();
+  void _updateMarker(Position position) {
+    final LatLng currentLatLng = LatLng(position.latitude, position.longitude);
+    _currentMarker = Marker(
+      markerId: const MarkerId("current_location"),
+      position: currentLatLng,
+      infoWindow: InfoWindow(
+        title: "My current location",
+        snippet:
+        "Lat: ${position.latitude.toStringAsFixed(4)}, Lng: ${position.longitude.toStringAsFixed(4)}",
+      ),
+    );
+  }
+
+  void _updatePolyline(Position position) {
+    final LatLng currentLatLng = LatLng(position.latitude, position.longitude);
+    _polylineCoordinates.add(currentLatLng);
+    _polylines = {
+      Polyline(
+        polylineId: const PolylineId("tracking_route"),
+        points: _polylineCoordinates,
+        color: Colors.blue,
+        width: 4,
+      ),
+    };
+  }
+
+  void _animateMapToPosition(Position position) {
+    if (_mapController != null) {
+      _mapController!.animateCamera(
+        CameraUpdate.newLatLng(
+          LatLng(position.latitude, position.longitude),
+        ),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Home'),
+        title: const Text("Map Tracking App"),
+        backgroundColor: Colors.blue,
       ),
-      body: GoogleMap(
+      body: _currentPosition == null
+          ? const Center(child: CircularProgressIndicator())
+          : GoogleMap(
         onMapCreated: (GoogleMapController controller) {
-          mapController = controller;
+          _mapController = controller;
         },
         initialCameraPosition: CameraPosition(
-          target: LatLng(position!.latitude, position!.longitude),
-          zoom: 14,
+          target: LatLng(
+            _currentPosition!.latitude,
+            _currentPosition!.longitude,
+          ),
+          zoom: 16,
         ),
-        markers: _markers,
+        markers: _currentMarker != null ? {_currentMarker!} : {},
         polylines: _polylines,
         myLocationEnabled: true,
         myLocationButtonEnabled: true,
       ),
     );
   }
+}
+
+void main() {
+  runApp(MaterialApp(
+    home: MapApp(),
+    debugShowCheckedModeBanner: false,
+  ));
 }
