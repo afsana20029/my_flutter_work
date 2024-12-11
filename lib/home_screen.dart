@@ -44,15 +44,15 @@ class _HomeScreenState extends State<HomeScreen> {
                 infoWindow: InfoWindow(
                   title: 'Current Location',
                   snippet:
-                      'Lat: ${currentLatLng.latitude}, Lng: ${currentLatLng.longitude}',
+                  'Lat: ${currentLatLng.latitude}, Lng: ${currentLatLng.longitude}',
                 ),
               ),
             };
-
             _polylines = {
+              ..._polylines,
               Polyline(
                 polylineId: const PolylineId('route'),
-                points: _routeCoordinates,
+                points: List.from(_routeCoordinates),
                 color: Colors.blue,
                 width: 5,
               ),
