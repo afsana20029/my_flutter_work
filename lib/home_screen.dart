@@ -12,10 +12,10 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   Position? position;
   GoogleMapController? _mapController;
-  List<LatLng> _routeCoordinates = [];
+  final List<LatLng> _routeCoordinates = [];
   Set<Marker> _markers = {};
   Set<Polyline> _polylines = {};
-
+  LatLng initialLocation=const LatLng(23.79657535109147, 90.43579444943923);
   @override
   void initState() {
     super.initState();
@@ -134,7 +134,7 @@ class _HomeScreenState extends State<HomeScreen> {
             initialCameraPosition: CameraPosition(
               target: position != null
                   ? LatLng(position!.latitude, position!.longitude)
-                  : LatLng(0, 0),
+                  : const LatLng(0, 0),
               zoom: 16.0,
             ),
             myLocationEnabled: true,
